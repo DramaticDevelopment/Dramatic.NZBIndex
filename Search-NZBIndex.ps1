@@ -39,34 +39,34 @@ function Search-NZBIndex
     )
 
 
-    $NZBIndexSearchTerms	= $SearchTerm -join ' '
-    $NZBIndexPageNr 		= $PageOffset-1
-    $NZBIndexPagesize 		= $PageSize
-    $NZBIndexPagesToFetch 	= $PagesToFetch
+    $NZBIndexSearchTerms    = $SearchTerm -join ' '
+    $NZBIndexPageNr         = $PageOffset-1
+    $NZBIndexPagesize       = $PageSize
+    $NZBIndexPagesToFetch   = $PagesToFetch
 
     do
     {
-        $searchResultsFound	= $false
+        $searchResultsFound = $false
 
         if ($NZBIndexPagesize -gt 250) { $NZBIndexPagesize = 250 }
 
         $nzbIndexQueryUri = New-Object Uri("http://www.nzbindex.nl/search/?q=$([System.Web.HttpUtility]::UrlEncode($NZBIndexSearchTerms))&sort=agedesc&max=$NZBIndexPagesize&p=$NZBIndexPageNr")
 
-        $cookies			= @{'agreed' = 'true'}
-        $cc 				= New-Object System.Net.CookieContainer 
+        $cookies          = @{'agreed' = 'true'}
+        $cc               = New-Object System.Net.CookieContainer 
         foreach ($c in $cookies.Keys)  
         {  
-            $cookie 		= New-Object System.Net.Cookie $c, $cookies[$c], $nzbIndexQueryUri.AbsolutePath, $nzbIndexQueryUri.Host  
+            $cookie       = New-Object System.Net.Cookie $c, $cookies[$c], $nzbIndexQueryUri.AbsolutePath, $nzbIndexQueryUri.Host  
             $cc.Add($cookie)  
         }  
 
-        $session 			= New-Object Microsoft.PowerShell.Commands.WebRequestSession  
-        $session.Cookies	= $cc  
+        $session          = New-Object Microsoft.PowerShell.Commands.WebRequestSession  
+        $session.Cookies  = $cc  
 
-        $pageContent 		= Invoke-WebRequest -uri $nzbIndexQueryUri -WebSession $session
+        $pageContent      = Invoke-WebRequest -uri $nzbIndexQueryUri -WebSession $session
 
 
-        $document 			= New-Object HtmlAgilityPack.HtmlDocument
+        $document         = New-Object HtmlAgilityPack.HtmlDocument
         $document.LoadHtml($pageContent.Content)
     
 
@@ -77,18 +77,20 @@ function Search-NZBIndex
             # If each search term is found in the NZB title, then continue parsing the TD block...
             if (@($NZBIndexSearchTerms -split ' ' | foreach { $NZBTitle -like "*$_*" } | where {$_ -eq $false}).Length -eq 0)
             {
-                $searchResultsFound	= $true
+                $searchResultsFound = $true
 
-                $nzbUrl 			= $td.SelectSingleNode("div/div/a[text()='Download']").GetAttributeValue('href', '')
-                #$nzbFilename 		= (New-Object Uri($nzbUrl)).Segments | select -last 1
-                #$nzbFilename 		= [System.Web.HttpUtility]::HtmlDecode($nzbFilename)
+                $nzbUrl             = $td.SelectSingleNode("div/div/a[text()='Download']").GetAttributeValue('href', '')
+                #$nzbFilename       = (New-Object Uri($nzbUrl)).Segments | select -last 1
+                #$nzbFilename       = [System.Web.HttpUtility]::HtmlDecode($nzbFilename)
 
-                $title 				= ($NZBTitle -split '"')[1]
+                # Construct the title from the NZBTitle by getting the foremost last quoted string
+                $title              = $NZBTitle -split '"'
+                $title              = $title[[Math]::Max(0, $title.Length-2)]
 
                 Write-Output ([PSCustomObject]@{
-                    NZBTitle		= $NZBtitle
-                    NZBUrl 			= $nzbUrl
-                    Title 			= $title
+                    NZBTitle        = $NZBtitle
+                    NZBUrl          = $nzbUrl
+                    Title           = $title
                 })
             }
         }
@@ -99,56 +101,56 @@ function Search-NZBIndex
     }
     while($NZBIndexPagesToFetch -gt 0 -and $searchResultsFound)
 
-	
+    
 <#
 .SYNOPSIS
     Perform a term search query on the NZBIndex.nl site and scrape the results.
 
 .DESCRIPTION
     Perform a term search query on the NZBIndex.nl site and scrape the results.
-	Search-NZBIndex returns zero or more PSObjects with
-	- Title,
-	- NZBTitle, and 
-	- NZBUrl.
-	
-	The NZBUrl points to the NZB file on NZBIndex.nl. Download this file to
-	a SABNZB or GetNZB watched directory. SABNZB or GetNZB will download the
-	item you searched for.
+    Search-NZBIndex returns zero or more PSObjects with
+    - Title,
+    - NZBTitle, and 
+    - NZBUrl.
+    
+    The NZBUrl points to the NZB file on NZBIndex.nl. Download this file to
+    a SABNZB or GetNZB watched directory. SABNZB or GetNZB will download the
+    item you searched for.
 
 .PARAMETER SearchTerm
-	One or more terms to search for on NZBIndex.nl.
+    One or more terms to search for on NZBIndex.nl.
 
 .PARAMETER PageOffset
-	Optional: the start page of the search results. Default is 1.
+    Optional: the start page of the search results. Default is 1.
  
 .PARAMETER PageSize
-	Optional: the size of the NZBIndex.nl search results page. Default is 25 (1-250).
+    Optional: the size of the NZBIndex.nl search results page. Default is 25 (1-250).
 
 .PARAMETER PagesToFetch
-	Optional: the number of search result pages to fetch. Default is all.
+    Optional: the number of search result pages to fetch. Default is all.
 
 .EXAMPLE
-	Search-NZBIndex -SearchTerm 'Striparchief_2015', 'Nomad'
+    Search-NZBIndex -SearchTerm 'Striparchief_2015', 'Nomad'
 
     Searches the NZBIndex.nl site for terms 'Striparchief_2015' and 'Nomad' and return results
-	as PSObjects for futher processing.
-	
-	NZBTitle                                                     NZBUrl                                                                                     Title                                                                                    
-	--------                                                     ------                                                                                     -----                                                                                    
-	(Striparchief_2015_NN) - "Nomade 01 (c).nzb" [00/13] yEnc    http://www.nzbindex.nl/download/114886771/Striparchief-2015-NN-Nomade-01-c.nzb-0013.nzb    Nomade 01 (c).nzb                                                                        
-	(Striparchief_2015_NN) - "Nomad 01-08 (c).nzb" [00/16] yEnc  http://www.nzbindex.nl/download/114886698/Striparchief-2015-NN-Nomad-01-08-c.nzb-0016.nzb  Nomad 01-08 (c).nzb 	
+    as PSObjects for futher processing.
+    
+    NZBTitle                                                     NZBUrl                                                                                     Title                                                                                    
+    --------                                                     ------                                                                                     -----                                                                                    
+    (Striparchief_2015_NN) - "Nomade 01 (c).nzb" [00/13] yEnc    http://www.nzbindex.nl/download/114886771/Striparchief-2015-NN-Nomade-01-c.nzb-0013.nzb    Nomade 01 (c).nzb                                                                        
+    (Striparchief_2015_NN) - "Nomad 01-08 (c).nzb" [00/16] yEnc  http://www.nzbindex.nl/download/114886698/Striparchief-2015-NN-Nomad-01-08-c.nzb-0016.nzb  Nomad 01-08 (c).nzb     
 
 .EXAMPLE
-	Search-NZBIndex -SearchTerm 'Striparchief_2015', 'Nomad' | foreach { Write-Host "Downloading NZB `"$($_.Title)`""; Invoke-WebRequest -Uri $_.NZBUrl -OutFile (Join-Path 'C:\temp\nzb\comics' $_.Title) }
+    Search-NZBIndex -SearchTerm 'Striparchief_2015', 'Nomad' | foreach { Write-Host "Downloading NZB `"$($_.Title)`""; Invoke-WebRequest -Uri $_.NZBUrl -OutFile (Join-Path 'C:\temp\nzb\comics' $_.Title) }
 
-	Searches the NZBIndex.nl site for terms 'Striparchief_2015' and 'Nomad' and downloads the 
-	NZB file to the C:\temp\nzb\comics directory where a tool like SABNZB picks it up for
-	downloading the comic from usenet.
-	
+    Searches the NZBIndex.nl site for terms 'Striparchief_2015' and 'Nomad' and downloads the 
+    NZB file to the C:\temp\nzb\comics directory where a tool like SABNZB picks it up for
+    downloading the comic from usenet.
+    
 .NOTES
-	
+    
 
 .LINK
     about_DramaticNZBIndexModule
-#>	
+#>  
 }
