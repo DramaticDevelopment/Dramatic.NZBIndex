@@ -47,5 +47,5 @@ Open a PowerShell command box and run the following command to install this modu
 
 
 ## Resources ##
-- [NZBIndex.nl](NZBIndex.nl)
+- [NZBIndex.nl](http://NZBIndex.nl)
 - Victor's vCard site [http://victorvogelpoel.nl](http://victorvogelpoel.nl)
