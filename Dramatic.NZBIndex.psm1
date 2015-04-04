@@ -22,7 +22,7 @@ Add-Type -AssemblyName 'System.Web'
 $script:thisModuleDirectory         = $PSScriptRoot                             # Directory path\Dramatic.NZBIndex\
 
 # Load the HtmlAgility Pack DLL (for easily scraping an HTML page)
-Add-Type -path (Join-Path $PSScriptRoot 'HtmlAgilityPack.dll')
+Add-Type -path (Join-Path $PSScriptRoot 'bin\HtmlAgilityPack.dll')
 
 
 #----------------------------------------------------------------------------------------------------------------------
